@@ -10,12 +10,12 @@
 <style>
   :root {
     --page: #E9EDF1; --ink: #1E2833; --bar: #24313F; --barInk: #E9EDF1;
-    --mark: #FFD84D; --markInk: #1E2833; --accent: #2F7D86; --btnInk: #FFFFFF;
+    --mark: #F2D98A; --accent: #2F7D86; --btnInk: #FFFFFF;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --page: #161C23; --ink: #D5DCE3; --bar: #0F141A; --barInk: #D5DCE3;
-      --mark: #E0B928; --markInk: #161C23; --accent: #5FB3BC; --btnInk: #0F141A;
+      --mark: #6B5310; --accent: #5FB3BC; --btnInk: #0F141A;
     }
   }
   * { box-sizing: border-box; }
@@ -39,7 +39,7 @@
   }
   #text p { margin: 0 0 1.2em; }
   .w { border-radius: .2em; padding: 0 .08em; margin: 0 -.08em; cursor: pointer; transition: background-color 60ms; }
-  .w.on { background: var(--mark); color: var(--markInk); }
+  .w.on { background: var(--mark); }
   footer {
     display: flex; align-items: center; gap: 1.25rem;
     padding: .75rem 1.25rem calc(.75rem + env(safe-area-inset-bottom));
