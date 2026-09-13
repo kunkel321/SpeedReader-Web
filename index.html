@@ -7,190 +7,122 @@
 <meta name="theme-color" content="#24313F">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root {
-    --page: #E9EDF1; --ink: #1E2833; --bar: #24313F; --barInk: #E9EDF1;
-    --mark: #F2D98A; --accent: #2F7D86; --btnInk: #FFFFFF;
+    --page:#E9EDF1; --ink:#1E2833; --dim:#5A6673; --bar:#24313F; --barInk:#E9EDF1;
+    --mark:#F2D98A; --accent:#2F7D86; --btnInk:#fff; --card:#fff; --line:#C9D2DB;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --page: #161C23; --ink: #D5DCE3; --bar: #0F141A; --barInk: #D5DCE3;
-      --mark: #6B5310; --accent: #5FB3BC; --btnInk: #0F141A;
+      --page:#161C23; --ink:#D5DCE3; --dim:#8B97A3; --bar:#0F141A; --barInk:#D5DCE3;
+      --mark:#6B5310; --accent:#5FB3BC; --btnInk:#0F141A; --card:#1E262F; --line:#2C3742;
     }
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
   body {
-    display: flex; flex-direction: column; height: 100dvh;
-    background: var(--page); color: var(--ink);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display:flex; flex-direction:column; height:100dvh; overflow:hidden;
+    background:var(--page); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
   header {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
-    padding: .9rem 1.25rem; background: var(--bar); color: var(--barInk);
+    display:flex; align-items:center; gap:.75rem;
+    padding:.7rem 1rem; background:var(--bar); color:var(--barInk); flex:none;
   }
-  header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-  #status { font-size: .85rem; opacity: .8; text-align: right; }
-  main { position: relative; flex: 1; overflow-y: auto; padding: 2rem 1.25rem 40vh; }
-  #text {
-    max-width: 34em; margin: 0 auto;
-    font-family: Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-    font-size: 1.35rem; line-height: 1.75;
-  }
-  #text p { margin: 0 0 1.2em; }
-  .w { border-radius: .2em; padding: 0 .08em; margin: 0 -.08em; cursor: pointer; transition: background-color 60ms; }
-  .w.on { background: var(--mark); }
-  footer {
-    display: flex; align-items: center; gap: 1.25rem;
-    padding: .75rem 1.25rem calc(.75rem + env(safe-area-inset-bottom));
-    background: var(--bar); color: var(--barInk);
-  }
-  button {
-    font: inherit; font-weight: 600; min-width: 6.5rem; min-height: 3rem;
-    border: 0; border-radius: .5rem; background: var(--accent); color: var(--btnInk); cursor: pointer;
-  }
-  button:focus-visible, input:focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
-  label { display: flex; align-items: center; gap: .75rem; flex: 1; font-size: .95rem; }
-  input[type=range] { flex: 1; min-height: 2rem; accent-color: var(--accent); }
-  #wpmOut { min-width: 5em; text-align: right; font-variant-numeric: tabular-nums; }
-  @media (prefers-reduced-motion: reduce) { .w { transition: none; } }
+  header h1 { margin:0; font-size:1.05rem; font-weight:600; flex:1;
+               overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #progress { font-size:.85rem; opacity:.75; font-variant-numeric:tabular-nums; }
+  #bar { height:3px; background:var(--accent); width:0; transition:width .2s linear; flex:none; }
+
+  button { font:inherit; border:0; border-radius:.5rem; cursor:pointer; color:var(--btnInk);
+           background:var(--accent); min-height:2.75rem; }
+  button:focus-visible, input:focus-visible { outline:3px solid var(--mark); outline-offset:2px; }
+  .ghost { background:transparent; color:var(--barInk); border:1px solid rgba(255,255,255,.25);
+           min-width:2.75rem; padding:0 .7rem; }
+
+  /* ---------- library ---------- */
+  #library { flex:1; overflow-y:auto; padding:1.25rem 1rem 3rem; }
+  .wrap { max-width:44rem; margin:0 auto; }
+  #add { width:100%; font-weight:600; margin-bottom:1.25rem; }
+  .empty { color:var(--dim); line-height:1.6; }
+  .empty code { background:var(--card); padding:.1em .35em; border-radius:.25em; }
+  .card { display:flex; align-items:stretch; gap:.5rem; background:var(--card);
+          border:1px solid var(--line); border-radius:.6rem; margin-bottom:.6rem; overflow:hidden; }
+  .card .open { flex:1; background:none; color:inherit; text-align:left; border-radius:0;
+                padding:.85rem 1rem; display:flex; flex-direction:column; gap:.35rem; }
+  .card .t { font-weight:600; }
+  .card .meta { font-size:.82rem; color:var(--dim); }
+  .card .track { height:4px; background:var(--line); border-radius:2px; overflow:hidden; margin-top:.2rem; }
+  .card .fill { display:block; height:100%; background:var(--accent); }
+  .card .ren,
+  .card .del { background:none; color:var(--dim); border-radius:0; padding:0 .85rem; font-size:1.05rem; }
+  .card .ren { border-left:1px solid var(--line); }
+
+  /* ---------- reader ---------- */
+  #reader { flex:1; display:flex; flex-direction:column; min-height:0; }
+  #pane { flex:1; overflow-y:auto; padding:2rem 1.25rem 45vh; }
+  #text { max-width:34em; margin:0 auto;
+          font-family:Charter,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+          font-size:1.35rem; line-height:1.75; }
+  #text p { margin:0 0 1.2em; }
+  #text h2 { font-family:system-ui,sans-serif; font-size:1.05rem; letter-spacing:.03em;
+             text-transform:uppercase; color:var(--dim); margin:2em 0 .9em; }
+  .w { border-radius:.2em; padding:0 .08em; margin:0 -.08em; cursor:pointer;
+       transition:background-color 60ms; }
+  .w.on { background:var(--mark); }
+  footer { display:flex; align-items:center; gap:.6rem; flex:none;
+           padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom));
+           background:var(--bar); color:var(--barInk); }
+  #play { min-width:6rem; font-weight:600; }
+  #play.on { background:var(--mark); color:var(--ink); }
+  footer label { display:flex; align-items:center; gap:.6rem; flex:1; font-size:.9rem; }
+  input[type=range] { flex:1; min-width:4rem; min-height:2rem; accent-color:var(--accent); }
+  #wpmOut { min-width:5em; text-align:right; font-variant-numeric:tabular-nums; }
+
+  /* ---------- overlays ---------- */
+  #busy { position:fixed; inset:0; display:grid; place-items:center; gap:1rem;
+          background:rgba(0,0,0,.55); color:#fff; z-index:9; font-size:1rem; }
+  #toast { position:fixed; left:50%; bottom:1.5rem; transform:translateX(-50%);
+           background:var(--bar); color:var(--barInk); padding:.7rem 1rem;
+           border-radius:.5rem; z-index:8; max-width:90vw; font-size:.9rem; }
+  [hidden] { display:none !important; }
+  @media (prefers-reduced-motion:reduce) { .w,#bar { transition:none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>SpeedReader</h1>
-  <div id="status">Checking…</div>
-</header>
 
-<main id="pane"><div id="text"></div></main>
+<section id="library">
+  <div class="wrap">
+    <h1 style="margin:.2rem 0 1rem;font-size:1.5rem;">SpeedReader</h1>
+    <button id="add" type="button">＋  Add a book</button>
+    <div id="shelf"></div>
+  </div>
+</section>
 
-<footer>
-  <button id="play" type="button">Start</button>
-  <label>Speed
-    <input id="wpm" type="range" min="100" max="800" step="25">
-    <output id="wpmOut"></output>
-  </label>
-</footer>
+<section id="reader" hidden>
+  <header>
+    <button id="home" class="ghost" type="button" aria-label="Back to library">‹</button>
+    <h1 id="bookTitle"></h1>
+    <span id="progress">0%</span>
+  </header>
+  <div id="bar"></div>
+  <main id="pane"><div id="text"></div></main>
+  <footer>
+    <button id="back" class="ghost" type="button" aria-label="Previous sentence">◀</button>
+    <button id="play" type="button">Start</button>
+    <button id="fwd" class="ghost" type="button" aria-label="Next sentence">▶</button>
+    <label>Speed
+      <input id="wpm" type="range" min="100" max="900" step="25">
+      <output id="wpmOut"></output>
+    </label>
+  </footer>
+</section>
 
-<script>
-const SAMPLE = [
-  "If you are reading this on your tablet, the test worked. This page came from a plain folder of files on GitHub, and your browser turned it into something that behaves like an app.",
-  "The yellow mark moves one word at a time at the speed shown below. Sentences end with a slightly longer pause, and commas get a short one, so the rhythm follows the text instead of a metronome. Drag the slider to change the speed while it runs, or tap any word to jump there.",
-  "When the mark reaches a new line, the page scrolls so the mark stays near the middle of the screen. Your eyes never have to hunt for the next line, which is most of what a pacer is for.",
-  "Close the app partway through and open it again. It should pick up at the same word and the same speed. Then try it with airplane mode turned on. If it still opens, the offline part works too.",
-  "Nothing here is fancy on purpose. There is no file loading, no settings screen, and no speech. Those come later, once the basic question has an answer: does a web app feel good enough for reading on this tablet?"
-];
+<div id="busy" hidden><span id="busyMsg">Working…</span></div>
+<div id="toast" hidden></div>
+<input id="file" type="file" accept=".epub,.txt,application/epub+zip,text/plain" hidden>
 
-// Storage wrapper: works on a real site, fails quietly in sandboxed previews.
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
-};
-
-const pane = document.getElementById("pane");
-const textEl = document.getElementById("text");
-const playBtn = document.getElementById("play");
-const wpmIn = document.getElementById("wpm");
-const wpmOut = document.getElementById("wpmOut");
-const statusEl = document.getElementById("status");
-const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// Wrap each word in a span; keep whitespace as plain text so lines wrap naturally.
-const words = [];
-for (const para of SAMPLE) {
-  const p = document.createElement("p");
-  for (const part of para.split(/(\s+)/)) {
-    if (!part) continue;
-    if (/^\s+$/.test(part)) { p.append(part); continue; }
-    const s = document.createElement("span");
-    s.className = "w";
-    s.textContent = part;
-    s.dataset.i = words.length;
-    words.push(s);
-    p.append(s);
-  }
-  textEl.append(p);
-}
-
-let idx = Math.min(store.get("sr.idx", 0), words.length - 1);
-let wpm = store.get("sr.wpm", 300);
-let timer = null, playing = false, lastTop = -1;
-
-function show(i, smooth = true) {
-  words[idx].classList.remove("on");
-  idx = i;
-  const w = words[idx];
-  w.classList.add("on");
-  if (w.offsetTop !== lastTop) {           // only scroll when the line changes
-    lastTop = w.offsetTop;
-    pane.scrollTo({ top: w.offsetTop - pane.clientHeight / 2, behavior: smooth && !reduceMotion ? "smooth" : "auto" });
-  }
-  store.set("sr.idx", idx);
-}
-
-function delayFor(word) {
-  const base = 60000 / wpm;
-  if (/[.!?]["')\]]*$/.test(word)) return base * 2.2;
-  if (/[,;:\u2014]["')\]]*$/.test(word)) return base * 1.5;
-  return base;
-}
-
-function schedule() { timer = setTimeout(advance, delayFor(words[idx].textContent)); }
-
-function advance() {
-  if (idx >= words.length - 1) { stop(); return; }
-  show(idx + 1);
-  schedule();
-}
-
-function play() {
-  if (idx >= words.length - 1) show(0);
-  playing = true;
-  playBtn.textContent = "Pause";
-  schedule();
-}
-
-function stop() {
-  playing = false;
-  clearTimeout(timer);
-  playBtn.textContent = idx >= words.length - 1 ? "Restart" : "Start";
-}
-
-playBtn.addEventListener("click", () => playing ? stop() : play());
-
-textEl.addEventListener("click", e => {
-  const w = e.target.closest(".w");
-  if (!w) return;
-  clearTimeout(timer);
-  show(+w.dataset.i);
-  if (playing) schedule(); else stop();
-});
-
-function setWpm(v) { wpm = v; wpmIn.value = v; wpmOut.textContent = v + " wpm"; store.set("sr.wpm", v); }
-wpmIn.addEventListener("input", () => setWpm(+wpmIn.value));
-
-document.addEventListener("keydown", e => {
-  if (e.code === "Space" && !e.target.closest("button, input")) { e.preventDefault(); playing ? stop() : play(); }
-});
-document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });
-
-setWpm(wpm);
-show(idx, false);
-stop();
-
-// Status line: tells you whether install and offline support are working.
-function setStatus(offline) {
-  const installed = matchMedia("(display-mode: standalone)").matches;
-  statusEl.textContent = (installed ? "Installed app" : "In browser") + ", " + offline;
-}
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js")
-    .then(() => navigator.serviceWorker.ready)
-    .then(() => setStatus("works offline"))
-    .catch(() => setStatus("online only"));
-} else {
-  setStatus("online only");
-}
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
