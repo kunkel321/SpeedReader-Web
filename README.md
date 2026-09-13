@@ -85,6 +85,14 @@ The **gear** button opens the reading settings:
 | Centre scroll | Keeps the highlighted word near the middle of the screen |
 | Text size, typeface, theme | Comfort settings; theme follows your device unless overridden |
 
+Four typefaces are offered: Serif, Sans-serif, Calibri and Monospace. Calibri is
+a Windows font that phones and tablets do not have, so the app ships
+[Carlito](https://github.com/googlefonts/carlito), a metric-compatible clone
+under the SIL Open Font Licence. On Windows you get real Calibri with no
+download; everywhere else the bundled 30 KB font is used instead, and the two are
+indistinguishable at reading sizes. The Serif and Sans options use whatever your
+device provides, which on Android means Noto Serif and Roboto.
+
 Your position is saved per book, down to the individual word, whenever you pause,
 leave a book, or switch away from the app.
 
@@ -205,12 +213,19 @@ There is no build step and no dependencies. The whole app is these files:
 | `sw.js` | Service worker; offline support |
 | `guide.txt` | The built-in guide |
 | `manifest.json` | Makes it installable |
+| `fonts/` | Carlito, for the Calibri option |
 
 ZIP inflation uses the browser's built-in `DecompressionStream`, so there is no
 third-party library to load and nothing to keep updated.
 
 If you change a file, bump `CACHE` in `sw.js` so browsers pick up the new version
 rather than serving the old one from cache.
+
+## Credits
+
+[Carlito](https://github.com/googlefonts/carlito) by the Carlito Project Authors,
+used under the SIL Open Font Licence 1.1. The licence text is included in
+`fonts/Carlito-OFL.txt`.
 
 ## Related
 

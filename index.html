@@ -9,6 +9,15 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+  /* Carlito: metric-compatible with Calibri, SIL Open Font Licence, so it can be
+     shipped with the app. Windows machines have real Calibri and use that; every
+     other device falls back to this 30 KB download. Only the regular weight is
+     needed — the reading pane renders plain text with no bold or italic. */
+  @font-face {
+    font-family: 'Carlito';
+    src: url('fonts/carlito-400.woff2') format('woff2');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
   :root {
     --page:#E9EDF1; --ink:#1E2833; --dim:#5A6673; --bar:#24313F; --barInk:#E9EDF1;
     --mark:#F2D98A; --tint:#F7EFD6; --accent:#2F7D86; --btnInk:#fff; --card:#fff; --line:#C9D2DB;
@@ -220,6 +229,7 @@
     <select id="optFont">
       <option value="serif">Serif</option>
       <option value="sans">Sans-serif</option>
+      <option value="calibri">Calibri</option>
       <option value="mono">Monospace</option>
     </select>
   </label>
@@ -241,7 +251,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-13i';
+  window.SR_BUILD = '2026-09-13j';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {

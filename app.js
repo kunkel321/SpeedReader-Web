@@ -86,6 +86,9 @@ function saveSettings() { prefs.set('settings', SETTINGS); }
 const FONTS = {
   serif: 'Charter,"Iowan Old Style","Palatino Linotype",Georgia,serif',
   sans: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',
+  // Real Calibri first, so Windows uses the installed font and downloads nothing;
+  // everyone else gets the bundled Carlito, which has identical metrics.
+  calibri: 'Calibri,Carlito,system-ui,sans-serif',
   mono: 'ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace'
 };
 

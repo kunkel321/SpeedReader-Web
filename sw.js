@@ -1,8 +1,9 @@
 // Service worker: lets the app open and read offline.
 // Network-first, so edits pushed to GitHub appear the next time you open it online.
-const CACHE = 'speedreader-v4';
+const CACHE = 'speedreader-v5';
 const FILES = ['./', './index.html', './app.js', './epub.js', './guide.txt',
-               './manifest.json', './icon-192.png', './icon-512.png'];
+               './manifest.json', './icon-192.png', './icon-512.png',
+               './fonts/carlito-400.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
