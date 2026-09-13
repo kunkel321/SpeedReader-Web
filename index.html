@@ -193,7 +193,8 @@
     </select>
   </label>
   <label class="row"><input type="checkbox" id="optSmart"> Smart pacing
-    <small>Longer words and commas get a little more time</small></label>
+    <small>Short function words go quicker, long words get longer;
+    the average stays at your set speed</small></label>
   <label class="row"><input type="checkbox" id="optSentPause"> Pause at sentence ends</label>
 
   <h3>Display</h3>
@@ -230,7 +231,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-13d';
+  window.SR_BUILD = '2026-09-13f';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {

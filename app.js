@@ -71,7 +71,7 @@ function applySettings() {
   if (SETTINGS.theme === 'auto') r.removeAttribute('data-theme');
   else r.setAttribute('data-theme', SETTINGS.theme);
   if (!SETTINGS.tint) clearTint();
-  if (book) { paintChunk(); paintTint(); }
+  if (book) { measureOverhead(); paintChunk(); paintTint(); updateProgress(); }
 }
 
 // ===========================================================================
@@ -222,6 +222,7 @@ async function openBook(id) {
   total = n;
 
   buildSentences();
+  buildWeights();
 
   // Stored totals can drift if the splitter changes; trust the live count.
   if (book.total !== total) { book.total = total; }
@@ -397,7 +398,7 @@ function show(i, smooth = true) {
 function updateProgress() {
   const p = total ? (idx / total) * 100 : 0;
   barEl.style.width = p.toFixed(1) + '%';
-  const mins = Math.round((total - idx) / Math.max(1, wpm));
+  const mins = Math.round(((total - idx) / Math.max(1, wpm)) * paceOverhead);
   const left = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m left` : `${mins}m left`;
   progEl.innerHTML = `${Math.round(p)}%<small></small>`;
   progEl.querySelector('small').textContent = left;
@@ -406,21 +407,94 @@ function updateProgress() {
 // ===========================================================================
 // The pacer
 // ===========================================================================
-// Time for the current chunk. WPM sets the floor; the rest is the natural
-// hesitation a reader already makes at punctuation and on long words.
+// ---------------------------------------------------------------------------
+// Smart pacing
+// ---------------------------------------------------------------------------
+// Reading isn't metronomic. The eye barely stops on "the" or "of" and lingers on
+// "encephalomyelitis". Word LENGTH is a poor proxy for that — it made "government"
+// and "unbelievable" equal. Syllables track it much better.
+
+// Function words: grammatical scaffolding, recognised as a shape rather than read.
+const STOP = new Set(('a an the and or but if of to in on at by for from with as is are was ' +
+  'were be been being am do does did have has had will would can could shall should may ' +
+  'might must it its this that these those i you he she we they them him her his their our ' +
+  'my your me us not no nor so than then there here when while about into over under up ' +
+  'out off down very too also just only such own same each any all both more most other ' +
+  'some who whom which what where why how').split(' '));
+
+function syllables(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!w) return 1;
+  if (w.length <= 3) return 1;
+  const trimmed = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '').replace(/^y/, '');
+  const groups = trimmed.match(/[aeiouy]{1,2}/g);
+  return groups ? groups.length : 1;
+}
+
+// Relative time for one word, before normalisation.
+function weightOf(word) {
+  const bare = word.toLowerCase().replace(/[^a-z']/g, '');
+  if (STOP.has(bare)) return 0.55;
+  const syl = syllables(word);
+  if (syl <= 1) return 0.9;
+  if (syl === 2) return 1.05;
+  if (syl === 3) return 1.3;
+  if (syl === 4) return 1.5;
+  return 1.7;
+}
+
+// Weights are normalised against the book's own average, so speeding up on "the"
+// and slowing on "mitochondria" redistributes time rather than adding it. Without
+// this the WPM slider would drift from what it says and the time-remaining
+// estimate would be wrong.
+let weights = null, meanWeight = 1, paceOverhead = 1;
+
+function buildWeights() {
+  weights = new Float32Array(total);
+  let sum = 0, g = 0;
+  for (const words of paras) {
+    for (const w of words) { const x = weightOf(w); weights[g++] = x; sum += x; }
+  }
+  meanWeight = sum / (total || 1);
+  measureOverhead();
+}
+
+// Normalising the word weights keeps the average at the set WPM exactly, but the
+// sentence, comma and paragraph pauses are real extra time on top. Measure how
+// much they add for this book so "time remaining" tells the truth instead of the
+// nominal figure. Cheap enough to redo whenever the pacing settings change.
+function measureOverhead() {
+  if (!total) { paceOverhead = 1; return; }
+  let extra = 0;
+  for (const words of paras) {
+    words.forEach((w, i) => {
+      if (SETTINGS.sentPause && /[.!?]["'”’)\]]*$/.test(w)) extra += 1.2;
+      if (SETTINGS.smart) {
+        if (/[,;:—–]["'”’)\]]*$/.test(w)) extra += 0.5;
+        if (i === words.length - 1) extra += 1.2;
+      }
+    });
+  }
+  paceOverhead = 1 + extra / total;
+}
+
+// Time for the current chunk: the words themselves, plus the natural hesitation
+// a reader already makes at punctuation and at the end of a thought.
 function chunkDelay() {
   const end = chunkEnd();
-  const n = end - idx + 1;
   const base = 60000 / wpm;
-  let d = base * n;
-  const last = wordAt(end);
+  let d = 0;
 
+  for (let i = idx; i <= end; i++) {
+    d += base * (SETTINGS.smart && weights ? weights[i] / meanWeight : 1);
+  }
+
+  const last = wordAt(end);
   if (SETTINGS.sentPause && /[.!?]["'”’)\]]*$/.test(last)) d += base * 1.2;
   if (SETTINGS.smart) {
     if (/[,;:—–]["'”’)\]]*$/.test(last)) d += base * 0.5;
-    if (last.length > 12) d += base * 0.35;
     const pi = paraOf(end);
-    if (end === starts[pi] + paras[pi].length - 1) d += base * 1.2;   // paragraph end
+    if (end === starts[pi] + paras[pi].length - 1) d += base * 1.2;   // end of paragraph
   }
   return d;
 }
