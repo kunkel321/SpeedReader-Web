@@ -583,6 +583,16 @@ window.addEventListener('pagehide', saveNow);
 // ===========================================================================
 // Boot
 // ===========================================================================
+// A duplicated id fails silently — getElementById returns the first match and any
+// later element with that id is simply never wired up. Catch it at startup.
+(function checkIds() {
+  const seen = new Set(), dupes = new Set();
+  for (const el of document.querySelectorAll('[id]')) {
+    if (seen.has(el.id)) dupes.add(el.id); else seen.add(el.id);
+  }
+  if (dupes.size) throw new Error('Duplicate element id(s): ' + [...dupes].join(', '));
+})();
+
 loadSettings();
 applySettings();
 setWpm(wpm);
