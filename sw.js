@@ -1,6 +1,6 @@
 // Service worker: lets the app open and read offline.
 // Network-first, so edits pushed to GitHub appear the next time you open it online.
-const CACHE = 'speedreader-v2';
+const CACHE = 'speedreader-v3';
 const FILES = ['./', './index.html', './app.js', './epub.js',
                './manifest.json', './icon-192.png', './icon-512.png'];
 

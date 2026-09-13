@@ -511,6 +511,12 @@ function openSheet() {
 function closeSheet() { sheet.hidden = sheetBg.hidden = true; }
 
 $('gear').addEventListener('click', openSheet);
+
+// Chrome's long-press context menu has nothing useful to offer inside a reader,
+// and dismissing it costs a tap. Leave it alone over the settings sheet.
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('#sheet')) e.preventDefault();
+});
 $('sheetClose').addEventListener('click', closeSheet);
 $('sheetDone').addEventListener('click', closeSheet);
 sheetBg.addEventListener('click', closeSheet);
@@ -539,6 +545,7 @@ bind('optFont', 'font', str);
 bind('optTheme', 'theme', str);
 
 function syncSheet() {
+  $('build').textContent = 'build ' + (window.SR_BUILD || '?');
   $('optChunk').value = SETTINGS.chunk;
   $('optSmart').checked = SETTINGS.smart;
   $('optSentPause').checked = SETTINGS.sentPause;
