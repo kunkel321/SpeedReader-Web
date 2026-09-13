@@ -1,5 +1,10 @@
 import { epubToText, txtToText } from './epub.js';
 
+// Stamped independently of index.html. The two files are cached separately and
+// can end up out of step — a new page against a stale script looks like a feature
+// that silently does nothing, which is very hard to diagnose from the outside.
+const APP_VERSION = '2026-09-13k';
+
 // ===========================================================================
 // Storage
 // ===========================================================================
@@ -688,7 +693,12 @@ bind('optFont', 'font', str);
 bind('optTheme', 'theme', str);
 
 function syncSheet() {
-  $('build').textContent = 'build ' + (window.SR_BUILD || '?');
+  const pageV = window.SR_BUILD || '?';
+  $('build').textContent = (pageV === APP_VERSION)
+    ? 'build ' + APP_VERSION
+    : `⚠ version mismatch — page ${pageV}, script ${APP_VERSION}. ` +
+      'Close the app completely and reopen it while online.';
+  $('build').classList.toggle('warn', pageV !== APP_VERSION);
   storageReport().then(r => {
     const mb = r.bytes / 1048576;
     const size = mb < 1 ? Math.round(r.bytes / 1024) + ' KB' : mb.toFixed(1) + ' MB';

@@ -158,6 +158,8 @@
     font:600 .82rem/1.4 ui-monospace,Consolas,monospace; word-break:break-word;
   }
   #build { color:var(--dim); font-size:.75rem; text-align:center; margin-top:.8rem; }
+  #build.warn { color:#fff; background:#8C1D1D; padding:.5rem .7rem;
+                border-radius:.4rem; font-weight:600; line-height:1.4; }
   #sheet .note { color:var(--dim); font-size:.82rem; line-height:1.5; margin:.3rem 0 0; }
   [hidden] { display:none !important; }
   @media (prefers-reduced-motion:reduce) { .w,#bar { transition:none; } }
@@ -251,7 +253,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-13j';
+  window.SR_BUILD = '2026-09-13k';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {
