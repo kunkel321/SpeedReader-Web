@@ -149,6 +149,7 @@
     font:600 .82rem/1.4 ui-monospace,Consolas,monospace; word-break:break-word;
   }
   #build { color:var(--dim); font-size:.75rem; text-align:center; margin-top:.8rem; }
+  #sheet .note { color:var(--dim); font-size:.82rem; line-height:1.5; margin:.3rem 0 0; }
   [hidden] { display:none !important; }
   @media (prefers-reduced-motion:reduce) { .w,#bar { transition:none; } }
 </style>
@@ -203,6 +204,9 @@
     the average stays at your set speed</small></label>
   <label class="row"><input type="checkbox" id="optSentPause"> Pause at sentence ends</label>
 
+  <h3>Storage</h3>
+  <p id="storage" class="note"></p>
+
   <h3>Display</h3>
   <label class="row"><input type="checkbox" id="optTint"> Sentence tint
     <small>Wash the whole sentence in a quieter colour</small></label>
@@ -237,7 +241,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-13h';
+  window.SR_BUILD = '2026-09-13i';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {

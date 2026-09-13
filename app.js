@@ -49,6 +49,28 @@ const SETTINGS = {
   tint: true, centre: true, size: 135, font: 'serif', theme: 'auto'
 };
 
+// Browsers may evict site storage when the device runs low on space. For a
+// library of books the user chose and paced through, that's a real loss, so ask
+// for persistent storage. Chrome usually grants it to an installed PWA without
+// prompting; if it's refused, nothing breaks, the data is just evictable.
+async function requestPersistence() {
+  try {
+    if (!navigator.storage?.persist) return null;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch { return null; }
+}
+
+// What the library actually costs, for the settings sheet.
+async function storageReport() {
+  const books = await allBooks();
+  let bytes = 0;
+  for (const b of books) bytes += (b.text || '').length * 2;   // UTF-16 in storage
+  let persisted = null;
+  try { persisted = await navigator.storage?.persisted?.(); } catch {}
+  return { count: books.length, bytes, persisted };
+}
+
 const prefs = {
   get(k, d) { try { const v = localStorage.getItem('sr.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('sr.' + k, JSON.stringify(v)); } catch {} }
@@ -664,6 +686,17 @@ bind('optTheme', 'theme', str);
 
 function syncSheet() {
   $('build').textContent = 'build ' + (window.SR_BUILD || '?');
+  storageReport().then(r => {
+    const mb = r.bytes / 1048576;
+    const size = mb < 1 ? Math.round(r.bytes / 1024) + ' KB' : mb.toFixed(1) + ' MB';
+    $('storage').textContent =
+      `${r.count} book${r.count === 1 ? '' : 's'} on this device, about ${size}. ` +
+      (r.persisted === true
+        ? 'Protected from automatic cleanup.'
+        : r.persisted === false
+          ? 'Not protected — the browser may clear it if storage runs low.'
+          : '');
+  }).catch(() => {});
   $('optChunk').value = SETTINGS.chunk;
   $('optSmart').checked = SETTINGS.smart;
   $('optSentPause').checked = SETTINGS.sentPause;
