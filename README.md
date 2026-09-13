@@ -115,6 +115,69 @@ settings are held in your browser's own storage. Nothing is uploaded, there is n
 account to create, no tracking, and no server that knows what you read. The app
 is served as static files from GitHub Pages.
 
+## Where your books are kept
+
+There is no folder of book files to find. Converted text and reading positions
+are stored in IndexedDB, which is part of your browser's own data, and which
+keeps its contents as database files rather than as documents you could open.
+Even on a desktop, where the directory is reachable, you would find opaque
+LevelDB files rather than anything readable.
+
+| Platform | Location |
+| --- | --- |
+| Windows | `%LocalAppData%\Google\Chrome\User Data\Default\IndexedDB\` |
+| macOS | `~/Library/Application Support/Google/Chrome/Default/IndexedDB/` |
+| Linux | `~/.config/google-chrome/Default/IndexedDB/` |
+| Android | Inside Chrome's private app data — not reachable without root |
+| iOS | Inside Safari's app container — not reachable |
+
+Look for a subfolder whose name contains `kunkel321.github.io`. The paths above
+assume Chrome and the default profile; other browsers and profiles differ.
+
+The practical consequences matter more than the paths:
+
+- Storage is **per browser and per device**. Installing SpeedReader on a phone
+  and a tablet gives you two separate libraries with separate reading positions.
+  There is no sync.
+- **Clearing site data deletes your library.** In Chrome, that is Settings →
+  Privacy → Clear browsing data with "Cookies and other site data" ticked, or the
+  per-site option under Settings → Site settings. Clearing only the *cache* is
+  safe and leaves your books alone.
+- SpeedReader asks the browser for persistent storage the first time you add a
+  book, which marks the library as something not to discard when the device runs
+  low on space. Chrome normally grants this to an installed app. You can see
+  whether it was granted, and how much space your books take, under **Storage**
+  in the gear settings.
+- Since the text is copied into the app, deleting the original EPUB from your
+  downloads folder does not affect a book you have already added.
+
+## Uninstalling
+
+SpeedReader uninstalls like any other app: press and hold the icon and choose
+Uninstall, or remove it from your device's app list.
+
+Whether that also deletes your library depends on the platform, and the browsers
+are not consistent about it:
+
+- **Desktop Chrome and Edge** show a checkbox in the uninstall dialog, along the
+  lines of *"Also clear data from Chrome"*. Ticking it removes the books; leaving
+  it unticked keeps them.
+- **Android** typically removes the app but may leave the site data behind, since
+  that data belongs to Chrome rather than to the installed app wrapper.
+- **iOS** removes the data along with the icon when you delete the app from the
+  home screen.
+
+If you want to be certain nothing is left, clear the site data yourself rather
+than relying on the uninstall to do it: in Chrome, Settings → Site settings →
+All sites → `kunkel321.github.io` → Delete data. Doing this *before* uninstalling
+is the most reliable order.
+
+What might be left behind is a few megabytes of text and nothing else.
+SpeedReader sets no cookies, requests no notification permission, and has no
+account or server-side record to clean up. And the leftovers are not all bad: if
+you reinstall later without clearing the data, your library and your places in
+each book are still there.
+
 ## Known limitations
 
 - No PDF support yet. Convert to EPUB or plain text first — Calibre does this
