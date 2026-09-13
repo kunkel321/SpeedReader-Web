@@ -39,10 +39,40 @@ const getBook = id => tx('readonly', s => s.get(id));
 const putBook = b => tx('readwrite', s => s.put(b));
 const delBook = id => tx('readwrite', s => s.delete(id));
 
+// Reading settings are global, not per book — they describe how you like to read,
+// not this particular book. Defaults match the AHK version's out-of-the-box state.
+const SETTINGS = {
+  chunk: 1, smart: true, sentPause: true,
+  tint: true, centre: true, size: 135, font: 'serif', theme: 'auto'
+};
+
 const prefs = {
   get(k, d) { try { const v = localStorage.getItem('sr.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('sr.' + k, JSON.stringify(v)); } catch {} }
 };
+
+function loadSettings() {
+  const saved = prefs.get('settings', null);
+  if (saved) Object.assign(SETTINGS, saved);
+}
+
+function saveSettings() { prefs.set('settings', SETTINGS); }
+
+const FONTS = {
+  serif: 'Charter,"Iowan Old Style","Palatino Linotype",Georgia,serif',
+  sans: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',
+  mono: 'ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace'
+};
+
+function applySettings() {
+  const r = document.documentElement;
+  r.style.setProperty('--readSize', (SETTINGS.size / 100) + 'rem');
+  r.style.setProperty('--readFont', FONTS[SETTINGS.font] || FONTS.serif);
+  if (SETTINGS.theme === 'auto') r.removeAttribute('data-theme');
+  else r.setAttribute('data-theme', SETTINGS.theme);
+  if (!SETTINGS.tint) clearTint();
+  if (book) { paintChunk(); paintTint(); }
+}
 
 // ===========================================================================
 // Elements
@@ -64,6 +94,9 @@ let total = 0;
 let idx = 0;            // global word index
 let wpm = prefs.get('wpm', 300);
 let timer = null, playing = false;
+let sentOf = null;            // word index → sentence id
+let sentRange = [];           // sentence id → [firstWord, lastWord]
+let shownSent = -1;           // sentence currently tinted
 let winFrom = 0, winTo = 0;   // paragraph window currently in the DOM
 const WINDOW = 24, EDGE = 6;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -188,6 +221,8 @@ async function openBook(id) {
   for (const p of paras) { starts.push(n); n += p.length; }
   total = n;
 
+  buildSentences();
+
   // Stored totals can drift if the splitter changes; trust the live count.
   if (book.total !== total) { book.total = total; }
   idx = Math.min(book.pos || 0, Math.max(0, total - 1));
@@ -203,6 +238,29 @@ async function openBook(id) {
 
   book.opened = Date.now();
   putBook(book);
+}
+
+// Sentence boundaries, precomputed once. The pacer needs the sentence a word
+// belongs to on every step, so this has to be a lookup rather than a scan.
+function buildSentences() {
+  sentOf = new Int32Array(total);
+  sentRange = [];
+  let sid = 0, first = 0;
+  for (let pi = 0; pi < paras.length; pi++) {
+    const base = starts[pi], words = paras[pi];
+    for (let wi = 0; wi < words.length; wi++) {
+      const g = base + wi;
+      sentOf[g] = sid;
+      const last = (wi === words.length - 1);          // paragraph end ends a sentence too
+      if (last || /[.!?]["'”’)\]]*$/.test(words[wi])) {
+        sentRange.push([first, g]);
+        sid++;
+        first = g + 1;
+      }
+    }
+  }
+  if (first < total) sentRange.push([first, total - 1]);
+  shownSent = -1;
 }
 
 function closeBook() {
@@ -251,8 +309,15 @@ function mountWindow(centerPara, keepAnchor) {
       s.className = 'w';
       s.textContent = w;
       s.dataset.i = base + wi;
-      frag.append(s);
-      el.append(s, document.createTextNode(' '));
+      el.append(s);
+      if (wi < words.length - 1) {
+        // The gaps between words are elements too, so the sentence tint reads as
+        // one continuous band instead of a row of stripes.
+        const gap = document.createElement('span');
+        gap.className = 'sp';
+        gap.textContent = ' ';
+        el.append(gap);
+      }
     });
     frag.append(el);
   }
@@ -263,14 +328,50 @@ function mountWindow(centerPara, keepAnchor) {
     const after = wordEl(idx)?.getBoundingClientRect().top;
     if (after != null) pane.scrollTop += (after - before);
   }
+  // The window was rebuilt, so the marks went with it.
+  if (book) { paintChunk(); paintTint(); }
 }
 
 const wordEl = i => textEl.querySelector(`.w[data-i="${i}"]`);
 
+function clearMarks(cls) {
+  for (const el of textEl.querySelectorAll('.' + cls)) el.classList.remove(cls);
+}
+const clearTint = () => clearMarks('sent');
+
+// The chunk is idx .. idx+chunk-1, clipped to the sentence so a chunk never
+// straddles a full stop — stepping over "...end. Next..." in one go reads badly.
+function chunkEnd() {
+  let end = Math.min(total - 1, idx + SETTINGS.chunk - 1);
+  if (sentOf) {
+    const limit = sentRange[sentOf[idx]]?.[1];
+    if (limit != null && end > limit) end = limit;
+  }
+  return end;
+}
+
+function paintChunk() {
+  clearMarks('on');
+  for (let i = idx; i <= chunkEnd(); i++) wordEl(i)?.classList.add('on');
+}
+
+function paintTint() {
+  if (!SETTINGS.tint || !sentOf) return;
+  const r = sentRange[sentOf[idx]];
+  if (!r) return;
+  clearTint();
+  for (let i = r[0]; i <= r[1]; i++) {
+    const el = wordEl(i);
+    if (!el) continue;
+    el.classList.add('sent');
+    const gap = el.nextElementSibling;              // carry the tint across the space
+    if (i < r[1] && gap?.classList.contains('sp')) gap.classList.add('sent');
+  }
+}
+
 let lastLineTop = -1;
 function show(i, smooth = true) {
-  const oldEl = wordEl(idx);
-  if (oldEl) oldEl.classList.remove('on');
+  clearMarks('on');
   idx = i;
 
   const pi = paraOf(idx);
@@ -278,9 +379,12 @@ function show(i, smooth = true) {
 
   const el = wordEl(idx);
   if (!el) return;
-  el.classList.add('on');
+  paintChunk();
 
-  if (el.offsetTop !== lastLineTop) {              // only scroll when the line changes
+  const sid = sentOf ? sentOf[idx] : -1;
+  if (SETTINGS.tint && sid !== shownSent) { shownSent = sid; paintTint(); }
+
+  if (SETTINGS.centre && el.offsetTop !== lastLineTop) {   // only scroll on a line change
     lastLineTop = el.offsetTop;
     pane.scrollTo({
       top: el.offsetTop - pane.clientHeight * 0.45,
@@ -293,41 +397,50 @@ function show(i, smooth = true) {
 function updateProgress() {
   const p = total ? (idx / total) * 100 : 0;
   barEl.style.width = p.toFixed(1) + '%';
-  progEl.textContent = `${Math.round(p)}%`;
+  const mins = Math.round((total - idx) / Math.max(1, wpm));
+  const left = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m left` : `${mins}m left`;
+  progEl.innerHTML = `${Math.round(p)}%<small></small>`;
+  progEl.querySelector('small').textContent = left;
 }
 
 // ===========================================================================
 // The pacer
 // ===========================================================================
-function delayFor(word, atParaEnd) {
+// Time for the current chunk. WPM sets the floor; the rest is the natural
+// hesitation a reader already makes at punctuation and on long words.
+function chunkDelay() {
+  const end = chunkEnd();
+  const n = end - idx + 1;
   const base = 60000 / wpm;
-  let d = base;
-  if (/[.!?]["'”’)\]]*$/.test(word)) d = base * 2.2;
-  else if (/[,;:—–]["'”’)\]]*$/.test(word)) d = base * 1.5;
-  else if (word.length > 12) d = base * 1.35;      // long words genuinely take longer
-  if (atParaEnd) d += base * 1.2;
+  let d = base * n;
+  const last = wordAt(end);
+
+  if (SETTINGS.sentPause && /[.!?]["'”’)\]]*$/.test(last)) d += base * 1.2;
+  if (SETTINGS.smart) {
+    if (/[,;:—–]["'”’)\]]*$/.test(last)) d += base * 0.5;
+    if (last.length > 12) d += base * 0.35;
+    const pi = paraOf(end);
+    if (end === starts[pi] + paras[pi].length - 1) d += base * 1.2;   // paragraph end
+  }
   return d;
 }
 
-function schedule() {
-  const pi = paraOf(idx);
-  const atEnd = idx === starts[pi] + paras[pi].length - 1;
-  timer = setTimeout(advance, delayFor(currentWord(), atEnd));
-}
+function schedule() { timer = setTimeout(advance, chunkDelay()); }
 
-const currentWord = () => {
-  const pi = paraOf(idx);
-  return paras[pi][idx - starts[pi]] || '';
+const wordAt = g => {
+  const pi = paraOf(g);
+  return paras[pi][g - starts[pi]] || '';
 };
 
 function advance() {
-  if (idx >= total - 1) { stop(); return; }
-  show(idx + 1);
+  const next = chunkEnd() + 1;
+  if (next >= total) { show(total - 1); stop(); return; }
+  show(next);
   schedule();
 }
 
 function play() {
-  if (idx >= total - 1) show(0);
+  if (idx >= total - 1) { shownSent = -1; show(0); }
   playing = true;
   playBtn.textContent = 'Pause';
   playBtn.classList.add('on');
@@ -386,16 +499,69 @@ textEl.addEventListener('click', e => {
   if (playing) schedule(); else saveNow();
 });
 
+// ---------------------------------------------------------------------------
+// Settings sheet
+// ---------------------------------------------------------------------------
+const sheet = $('sheet'), sheetBg = $('sheetBg');
+
+function openSheet() {
+  syncSheet();
+  sheet.hidden = sheetBg.hidden = false;
+}
+function closeSheet() { sheet.hidden = sheetBg.hidden = true; }
+
+$('gear').addEventListener('click', openSheet);
+$('sheetClose').addEventListener('click', closeSheet);
+$('sheetDone').addEventListener('click', closeSheet);
+sheetBg.addEventListener('click', closeSheet);
+
+// Every control writes straight through and takes effect live — no Apply button,
+// because you want to see a tint or a text size against real prose to judge it.
+function bind(id, key, read, after) {
+  $(id).addEventListener('input', () => {
+    SETTINGS[key] = read($(id));
+    saveSettings();
+    applySettings();
+    if (after) after();
+  });
+}
+const bool = el => el.checked;
+const num = el => +el.value;
+const str = el => el.value;
+
+bind('optChunk', 'chunk', num, () => book && show(idx, false));
+bind('optSmart', 'smart', bool);
+bind('optSentPause', 'sentPause', bool);
+bind('optTint', 'tint', bool, () => { shownSent = -1; if (book) show(idx, false); });
+bind('optScroll', 'centre', bool);
+bind('optSize', 'size', num, () => { $('optSizeOut').textContent = SETTINGS.size + '%'; });
+bind('optFont', 'font', str);
+bind('optTheme', 'theme', str);
+
+function syncSheet() {
+  $('optChunk').value = SETTINGS.chunk;
+  $('optSmart').checked = SETTINGS.smart;
+  $('optSentPause').checked = SETTINGS.sentPause;
+  $('optTint').checked = SETTINGS.tint;
+  $('optScroll').checked = SETTINGS.centre;
+  $('optSize').value = SETTINGS.size;
+  $('optSizeOut').textContent = SETTINGS.size + '%';
+  $('optFont').value = SETTINGS.font;
+  $('optTheme').value = SETTINGS.theme;
+}
+
 function setWpm(v) {
   wpm = v;
   wpmIn.value = v;
   wpmOut.textContent = v + ' wpm';
   prefs.set('wpm', v);
+  if (book) updateProgress();
 }
 wpmIn.addEventListener('input', () => setWpm(+wpmIn.value));
 
 document.addEventListener('keydown', e => {
   if (readView.hidden || e.target.closest('button, input')) return;
+  if (!sheet.hidden) { if (e.code === 'Escape') closeSheet(); return; }
   if (e.code === 'Space') { e.preventDefault(); playing ? stop() : play(); }
   else if (e.code === 'ArrowLeft') { e.preventDefault(); jump(-1); }
   else if (e.code === 'ArrowRight') { e.preventDefault(); jump(1); }
@@ -410,6 +576,8 @@ window.addEventListener('pagehide', saveNow);
 // ===========================================================================
 // Boot
 // ===========================================================================
+loadSettings();
+applySettings();
 setWpm(wpm);
 renderShelf();
 
