@@ -64,7 +64,10 @@
   /* ---------- library ---------- */
   #library { flex:1; overflow-y:auto; padding:1.25rem 1rem 3rem; }
   .wrap { max-width:44rem; margin:0 auto; }
-  #add { width:100%; font-weight:600; margin-bottom:1.25rem; }
+  .addRow { display:flex; gap:.6rem; margin-bottom:1.25rem; }
+  #add { flex:1; font-weight:600; }
+  .second { background:transparent; color:var(--accent);
+            border:1px solid var(--accent); padding:0 1.1rem; }
   .empty { color:var(--dim); line-height:1.6; }
   .empty code { background:var(--card); padding:.1em .35em; border-radius:.25em; }
   .card { display:flex; align-items:stretch; gap:.5rem; background:var(--card);
@@ -155,7 +158,10 @@
 <section id="library">
   <div class="wrap">
     <h1 style="margin:.2rem 0 1rem;font-size:1.5rem;">SpeedReader</h1>
-    <button id="add" type="button">＋  Add a book</button>
+    <div class="addRow">
+      <button id="add" type="button">＋  Add a book</button>
+      <button id="guide" class="second" type="button">Guide</button>
+    </div>
     <div id="shelf"></div>
   </div>
 </section>
@@ -231,7 +237,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-13f';
+  window.SR_BUILD = '2026-09-13h';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {

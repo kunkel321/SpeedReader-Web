@@ -29,7 +29,10 @@ async function tx(mode, fn) {
   return new Promise((res, rej) => {
     const t = d.transaction(STORE, mode);
     const out = fn(t.objectStore(STORE));
-    t.oncomplete = () => res(out.result !== undefined ? out.result : out);
+    // A get() that finds nothing has result === undefined, which is a real answer.
+    // Test for the request itself, not for a defined result, or "not found" comes
+    // back as the request object — truthy, and quietly wrong.
+    t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out);
     t.onerror = () => rej(t.error);
   });
 }
@@ -113,8 +116,9 @@ async function renderShelf() {
   shelf.innerHTML = '';
   if (!books.length) {
     shelf.innerHTML = `<p class="empty">No books yet. Tap <strong>Add a book</strong> and pick an
-      <code>.epub</code> or <code>.txt</code> file — from Calibre Sync's download folder, or anywhere
-      else on the tablet. Books are copied into the app, so you only pick each one once.</p>`;
+      <code>.epub</code> or <code>.txt</code> file from anywhere on the tablet — books are copied
+      into the app, so you only pick each one once. Or tap <strong>Guide</strong> for a short book
+      about how to use this one.</p>`;
     return;
   }
   for (const b of books) {
@@ -198,6 +202,46 @@ fileIn.addEventListener('change', async () => {
     alert('Could not open that file.\n\n' + (err?.message || err));
   }
 });
+
+// The desktop version opens its guide on first launch. Same idea here: a new
+// shelf is an unhelpful place to land, and the guide doubles as a real book to
+// try the pacer on.
+const GUIDE_ID = 'guide';
+
+async function addGuide(open) {
+  let rec = await getBook(GUIDE_ID);
+  if (!rec) {
+    const res = await fetch('guide.txt');
+    if (!res.ok) throw new Error('guide.txt not found');
+    const text = txtToText(await res.text());
+    rec = {
+      id: GUIDE_ID,
+      title: 'SpeedReader — A Guide to Faster Reading',
+      author: '', text, total: text.split(/\s+/).filter(Boolean).length,
+      pos: 0, added: Date.now(), opened: Date.now()
+    };
+    await putBook(rec);
+  }
+  await renderShelf();
+  if (open) openBook(GUIDE_ID);
+}
+
+$('guide').addEventListener('click', async () => {
+  try { await addGuide(true); }
+  catch (e) { alert('Could not open the guide.\n\n' + (e?.message || e)); }
+});
+
+// First run only: seed the shelf, then never again — so removing the guide
+// doesn't just bring it back next time.
+async function seedGuide() {
+  if (prefs.get('seeded', false)) return;
+  try {
+    await addGuide(false);
+    prefs.set('seeded', true);      // only once it's really there, so a failed
+  } catch (e) {                     // first load (offline) retries next time
+    console.warn('Could not seed the guide:', e);
+  }
+}
 
 function toast(msg) {
   const t = $('toast');
@@ -670,7 +714,7 @@ window.addEventListener('pagehide', saveNow);
 loadSettings();
 applySettings();
 setWpm(wpm);
-renderShelf();
+renderShelf().then(seedGuide);
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

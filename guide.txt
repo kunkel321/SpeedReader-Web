@@ -1,0 +1,77 @@
+SpeedReader — A Guide to Faster Reading
+
+## Introduction
+
+There is a good chance you already read faster than you think. Most people, when they sit down with a novel or a long article, are held back not by their ability to understand words but by habits picked up in elementary school — the quiet internal voice that sounds out every word, the tendency to re-read sentences that were understood perfectly the first time, and the wandering eye that drifts back a line or two out of insecurity. Speed reading training is really just a systematic effort to break those habits, and the best tool for doing so is a pacer: something that moves through the text at a fixed rate and forces the eye to keep up.
+
+SpeedReader is that pacer. It opens a book on your tablet, highlights a word or a small group of words at a time, and advances at whatever rate you choose, measured in words per minute. It does not flash single words in the centre of the screen and demand that you catch them. That technique, called Rapid Serial Visual Presentation, has been largely discredited as a reading aid because it strips away the spatial context that helps comprehension. Instead, SpeedReader keeps the full text visible and simply moves a highlight through it, like a finger moving along a line, but precise and tireless.
+
+This guide is itself a book in your library, which means you can read it with the pacer running — a reasonable way to get a feel for the application while learning what it does. If you ever want it back after removing it, the Guide button sits next to Add a book on the library screen.
+
+## Getting Started
+
+SpeedReader is a web app, which is an unusual thing to say about something sitting on your home screen. There was no app store and no installer. The whole application was delivered as a handful of files from a web address, and your browser keeps a copy of them. That copy is why it opens when you are offline, on a plane or out of signal, exactly as it does at home.
+
+Everything stays on this device. The books you add, the place you reached in each one, and your pacing preferences live in the tablet's own storage. Nothing is uploaded, there is no account to create, and no server anywhere holds a record of what you read.
+
+To add a book, tap Add a book and pick an EPUB or a plain-text file. The file browser will show you the tablet's storage; if you sync books across with Calibre, they will be in whichever folder you chose when you set that up. You only ever pick a given book once. SpeedReader copies the text into itself, so the book afterwards belongs to the app rather than to a file somewhere on the tablet, and it will still be there if the original is moved or deleted.
+
+An EPUB is converted the moment you add it, which takes a few seconds for a full-length book. What happens during those seconds is described further down, under Converting Books, because it is more involved than it sounds.
+
+## The Library
+
+The library lists every book you have added, most recently opened first. Under each title is the word count and how far through it you are, with a bar showing the same thing at a glance. Tap a book to open it and you resume exactly where you stopped — not at the paragraph or the page, but at the individual word.
+
+Two small buttons sit at the right of each row. The pencil renames a book, which is more useful than it may appear: publishers often bury a production code in the file's metadata rather than a title, so a book can arrive on your shelf called something like BE0324rv0724 rather than the name on its cover. The cross removes a book and forgets your place in it.
+
+## Reading
+
+The controls along the bottom are deliberately few. Start and Pause do what they say. The arrows either side step backwards and forwards by a sentence, which is the right unit when you realise you have lost the thread — a fixed number of words would drop you into the middle of a clause. The slider sets your speed in words per minute.
+
+At the top of the screen you will find how far through the book you are and an estimate of the time remaining. That estimate accounts for the pauses the pacer inserts, so it reflects how long the book will actually take you rather than a figure derived from the raw speed setting.
+
+If you want to start somewhere other than where the highlight sits — to skip a table of contents, a preface, or the copyright notices common in Project Gutenberg files — tap any word. The highlight jumps there. Tapping while paused simply moves your place; tapping while the pacer is running moves it and carries on from the new position.
+
+## The Pacing Options
+
+The gear button opens the reading settings. Everything there applies immediately, so you can judge a change against real prose rather than guessing from a description.
+
+Words at a time sets how many words are highlighted per step. At one, a single word lights up. At two or three, small groups do. Most people find two or three feels more natural at higher speeds, because the eye is accustomed to taking in clusters of words rather than processing them strictly one at a time. A chunk never straddles a full stop, so you will not be asked to read the end of one sentence and the start of the next in a single glance.
+
+Smart pacing varies the time each word gets. Reading is not metronomic: the eye barely stops on "the" or "of" and lingers over something like "mitochondria". SpeedReader estimates the syllables in each word, gives short function words less time and long words more, and — this is the important part — balances the two against each other so the average still comes out at the speed you set. Turning it on makes the rhythm feel more like reading; it does not secretly slow you down.
+
+Pause at sentence ends adds a beat at each full stop. It is a small thing that makes a surprising difference to comprehension at higher speeds, because it gives you the moment of consolidation that punctuation exists to signal.
+
+Sentence tint washes the whole sentence you are inside in a quieter colour, underneath the brighter word highlight. The word tells you where you are; the tint tells you how much of the current thought is still ahead of you. If you find it distracting, turn it off — the word highlight works perfectly well alone.
+
+Centre scroll keeps the highlighted word near the middle of the screen, so your eyes never have to hunt for the next line. Without it the text stays put until the highlight reaches the bottom. Centre scroll is what most people want, but it is worth trying both.
+
+Text size, typeface and theme are matters of comfort rather than technique. The theme follows your tablet's light or dark setting unless you override it. It is worth setting the text size while actually reading at speed, since a size that looks fine when stationary can be cramped when the highlight is moving.
+
+## Converting Books
+
+An EPUB is not a document. It is a zip file containing a small website — chapters as HTML, a stylesheet, images, and a manifest listing the reading order. Turning that into a clean stream of prose is the least visible and most difficult thing SpeedReader does.
+
+The hardest part is books made from printed originals. Print pages carry material that is not part of the narrative: boxed sidebars, figure captions, photo credits, running heads and page numbers. On paper your eye skips these effortlessly, taking the box as an aside and returning to the main text without conscious effort. A pacer cannot skip anything. Dropped into the flow, a sidebar cuts a sentence in half and drags you into an unrelated topic for two hundred words before dumping you back mid-clause.
+
+SpeedReader detects that material and moves it to the end of the book, under a divider, so the narrative runs unbroken and nothing is lost. It also repairs hyphens. Printed text breaks long words across lines, and those breaks often survive into the digital file, leaving fragments like "produc-tion" or "peo-ple" scattered through the text. Where the original layout is known, SpeedReader can tell a line-break hyphen from a real one and knows that "mind-body" should keep its hyphen while "com-mon" should not.
+
+None of this is guaranteed for every book. EPUBs vary enormously in how they are built, and a badly assembled one can defeat any parser. But for books from established publishers the result is usually clean enough to read without noticing the work that went into it.
+
+## Training with SpeedReader
+
+The temptation is to push the speed up immediately and feel impressive. This does not work. Comprehension collapses well before the eye does, and reading quickly without understanding is not reading.
+
+A better approach is to find the fastest speed at which you still follow the text comfortably, then sit there for a while. Read for twenty minutes at that pace, several days running, until it feels unremarkable. Then raise it by twenty-five words per minute and repeat. Progress made this way is slow in the first week and surprisingly quick in the second month.
+
+It helps to separate practice from reading. When you are practising, choose something you do not mind reading imperfectly — a novel you have read before, or an article whose subject you already know well. Save the dense material for ordinary reading at an ordinary pace. Trying to learn a new technique and new information simultaneously does justice to neither.
+
+Pay attention to the internal voice. Most people sound out words silently as they read, and that voice runs at roughly speaking pace, somewhere around two hundred words per minute. It is the single largest brake on reading speed. You cannot simply decide to switch it off, but it tends to fall away on its own when the pacer moves faster than the voice can keep up, which is one of the better arguments for a pacer over sheer willpower.
+
+Finally, resist the urge to go back. The habit of re-reading a sentence you have already understood is expensive and almost always unnecessary. The pacer will keep moving, and you will usually find that the meaning was there all along and the anxiety was misplaced. If you genuinely missed something, the back arrow is right there — but use it because you need to, not because you are nervous.
+
+## About the Application
+
+SpeedReader began as a Windows program written in AutoHotkey, and this web version came later, so that the same pacer could run on a tablet. The two share their thinking about how text should be prepared for reading, though the desktop version has more settings and can read aloud.
+
+Everything here runs in your browser. There is no server, no tracking, and no cost. The source is public, so if something misbehaves, the code that misbehaved can be read.
