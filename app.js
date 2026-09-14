@@ -3,7 +3,7 @@ import { epubToText, txtToText } from './epub.js';
 // Stamped independently of index.html. The two files are cached separately and
 // can end up out of step — a new page against a stale script looks like a feature
 // that silently does nothing, which is very hard to diagnose from the outside.
-const APP_VERSION = '2026-09-14a';
+const APP_VERSION = '2026-09-14b';
 
 // ===========================================================================
 // Storage
@@ -275,12 +275,12 @@ async function seedGuide() {
   }
 }
 
-function toast(msg) {
+function toast(msg, ms = 4000) {
   const t = $('toast');
   t.textContent = msg;
   t.hidden = false;
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => { t.hidden = true; }, 4000);
+  toast._t = setTimeout(() => { t.hidden = true; }, ms);
 }
 
 // ===========================================================================
@@ -345,6 +345,7 @@ function buildSentences() {
 function closeBook() {
   stop();
   saveNow();
+  cancelGestures();
   unmountAll();
   book = null;
   readView.hidden = true;
@@ -689,15 +690,96 @@ function jump(dir) {
   if (playing) schedule();
 }
 
-textEl.addEventListener('click', e => {
+// ---------------------------------------------------------------------------
+// Gestures over the text
+// ---------------------------------------------------------------------------
+// Both of these exist so that a change of speed, or a start and stop, doesn't
+// cost you eye contact with the prose. Dragging sideways anywhere over the page
+// is the speed control; a double tap is Start/Pause.
+//
+// The stylesheet gives the pane touch-action:pan-y pinch-zoom, so the browser
+// keeps vertical scrolling and pinch to itself and hands us horizontal movement.
+// When it decides a drag is a scroll after all, it cancels our pointer, which is
+// a cleaner axis lock than anything we could time ourselves.
+const TAP_SLOP = 10;        // px of travel still counted as a tap, not a drag
+const AXIS_LOCK = 14;       // px before a drag commits to horizontal or vertical
+const WPM_PX = 30;          // px of drag per step of the speed slider
+const DOUBLE_MS = 260;      // window for the second tap of a pair
+const DOUBLE_SLOP = 44;     // px the second tap may land from the first
+
+let drag = null;            // the pointer currently down on the pane
+let pendingTap = null;      // a tap held back in case a second one follows
+let swallowClick = false;   // a drag ends in a click too; it isn't a tap
+
+const wpmStep = v => Math.max(+wpmIn.min, Math.min(+wpmIn.max, Math.round(v / 25) * 25));
+
+pane.addEventListener('pointerdown', e => {
+  if (!book || drag || e.button > 0) return;      // ignore a second finger
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: '', wpm0: wpm, moved: false };
+});
+
+pane.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) drag.moved = true;
+
+  if (!drag.axis) {
+    if (Math.abs(dx) >= AXIS_LOCK && Math.abs(dx) > Math.abs(dy)) drag.axis = 'x';
+    else if (Math.abs(dy) >= AXIS_LOCK) drag.axis = 'y';
+    else return;
+  }
+  if (drag.axis !== 'x') return;
+
+  // Quantised against where the finger went down rather than accumulated from the
+  // last move, so a drag out and back returns to exactly the speed you started at.
+  const want = wpmStep(drag.wpm0 + Math.round(dx / WPM_PX) * 25);
+  if (want !== wpm) { setWpm(want); toast(want + ' wpm', 1200); }
+});
+
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (drag.moved) swallowClick = true;
+  drag = null;
+}
+pane.addEventListener('pointerup', endDrag);
+pane.addEventListener('pointercancel', endDrag);
+
+function cancelGestures() {
+  if (pendingTap) clearTimeout(pendingTap.timer);
+  pendingTap = null;
+  drag = null;
+  swallowClick = false;
+}
+
+pane.addEventListener('click', e => {
+  if (swallowClick) { swallowClick = false; return; }
+  const now = performance.now();
+
+  // Second tap of a pair: drop the jump the first one was holding and toggle the
+  // pacer instead, so double-tapping to pause can't move where you were reading.
+  if (pendingTap && now - pendingTap.t < DOUBLE_MS &&
+      Math.abs(e.clientX - pendingTap.x) < DOUBLE_SLOP &&
+      Math.abs(e.clientY - pendingTap.y) < DOUBLE_SLOP) {
+    clearTimeout(pendingTap.timer);
+    pendingTap = null;
+    playing ? stop() : play();
+    return;
+  }
+
   const p = e.target.closest('[data-p]');
-  if (!p) return;
   const w = e.target.closest('.w');
-  const target = w ? +w.dataset.i : wordIndexAt(+p.dataset.p, e.clientX, e.clientY);
-  if (target == null) return;
-  clearTimeout(timer);
-  show(target);
-  if (playing) schedule(); else saveNow();
+  const target = !p ? null
+    : w ? +w.dataset.i : wordIndexAt(+p.dataset.p, e.clientX, e.clientY);
+
+  // Hold the jump for a moment. A tap on bare margin holds nothing, but still
+  // opens the window, so a double tap works anywhere on the page.
+  pendingTap = { t: now, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+    pendingTap = null;
+    if (target == null) return;
+    clearTimeout(timer);
+    show(target);
+    if (playing) schedule(); else saveNow();
+  }, DOUBLE_MS) };
 });
 
 // A paragraph outside the hydrated band is plain text, so there is no span under

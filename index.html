@@ -97,7 +97,13 @@
      scroll anchoring silently adjusts scrollTop of its own accord when content
      changes, which fights the centring scroll and shows up as an unexplained
      jump. */
-  #pane { flex:1; overflow-y:auto; overflow-anchor:none; padding:2rem 1.25rem 45vh; }
+  /* pan-y pinch-zoom: the browser keeps vertical scrolling and pinch to itself
+     and passes horizontal movement to us, where it drives the speed. It also
+     switches off double-tap-to-zoom, which we want for Start/Pause. contain
+     stops an over-scroll at the top from triggering pull-to-refresh, which
+     would reload the app mid-sentence. */
+  #pane { flex:1; overflow-y:auto; overflow-anchor:none; padding:2rem 1.25rem 45vh;
+          touch-action:pan-y pinch-zoom; overscroll-behavior-y:contain; }
   #text { max-width:34em; margin:0 auto;
           font-family:var(--readFont); font-size:var(--readSize); line-height:1.75; }
   #text p { margin:0 0 1.2em; }
@@ -257,7 +263,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-14a';
+  window.SR_BUILD = '2026-09-14b';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {
