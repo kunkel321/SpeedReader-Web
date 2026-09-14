@@ -93,7 +93,11 @@
 
   /* ---------- reader ---------- */
   #reader { flex:1; display:flex; flex-direction:column; min-height:0; }
-  #pane { flex:1; overflow-y:auto; padding:2rem 1.25rem 45vh; }
+  /* The pacer is the only thing that should ever move this scroller. Chrome's
+     scroll anchoring silently adjusts scrollTop of its own accord when content
+     changes, which fights the centring scroll and shows up as an unexplained
+     jump. */
+  #pane { flex:1; overflow-y:auto; overflow-anchor:none; padding:2rem 1.25rem 45vh; }
   #text { max-width:34em; margin:0 auto;
           font-family:var(--readFont); font-size:var(--readSize); line-height:1.75; }
   #text p { margin:0 0 1.2em; }
@@ -253,7 +257,7 @@
 
 <div id="crash" hidden></div>
 <script>
-  window.SR_BUILD = '2026-09-13k';
+  window.SR_BUILD = '2026-09-14a';
   (function () {
     var box = document.getElementById('crash');
     function shout(what) {

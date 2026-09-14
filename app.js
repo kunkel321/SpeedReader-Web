@@ -3,7 +3,7 @@ import { epubToText, txtToText } from './epub.js';
 // Stamped independently of index.html. The two files are cached separately and
 // can end up out of step — a new page against a stale script looks like a feature
 // that silently does nothing, which is very hard to diagnose from the outside.
-const APP_VERSION = '2026-09-13k';
+const APP_VERSION = '2026-09-14a';
 
 // ===========================================================================
 // Storage
@@ -104,7 +104,7 @@ function applySettings() {
   if (SETTINGS.theme === 'auto') r.removeAttribute('data-theme');
   else r.setAttribute('data-theme', SETTINGS.theme);
   if (!SETTINGS.tint) clearTint();
-  if (book) { measureOverhead(); paintChunk(); paintTint(); updateProgress(); }
+  if (book) { measureOverhead(); lastLineTop = -1; paintChunk(); paintTint(); updateProgress(); }
 }
 
 // ===========================================================================
@@ -130,8 +130,10 @@ let timer = null, playing = false;
 let sentOf = null;            // word index → sentence id
 let sentRange = [];           // sentence id → [firstWord, lastWord]
 let shownSent = -1;           // sentence currently tinted
-let winFrom = 0, winTo = 0;   // paragraph window currently in the DOM
-const WINDOW = 24, EDGE = 6;
+let paraEls = [];             // paragraph index → its <p>/<h2> element
+const hydrated = new Set();   // paragraphs currently split into word spans
+const HYDRATE = 2;            // paragraphs kept split either side of the position
+let onEls = [], sentEls = []; // elements currently marked, so clearing is cheap
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ===========================================================================
@@ -307,7 +309,9 @@ async function openBook(id) {
   readView.hidden = false;
   document.body.classList.add('reading');
 
-  mountWindow(paraOf(idx), false);
+  mountAll();
+  lastLineTop = -1;
+  pane.scrollTop = 0;
   show(idx, false);
   stop();
 
@@ -341,6 +345,7 @@ function buildSentences() {
 function closeBook() {
   stop();
   saveNow();
+  unmountAll();
   book = null;
   readView.hidden = true;
   libView.hidden = false;
@@ -349,11 +354,19 @@ function closeBook() {
 }
 
 // ===========================================================================
-// Windowed rendering
+// Rendering
 // ===========================================================================
-// A full book is tens of thousands of words. Putting every one in the DOM makes
-// the first paint slow on a tablet, so only a window of paragraphs is mounted and
-// it slides as you read.
+// Every paragraph is in the DOM from the moment a book opens, as an ordinary
+// paragraph of text. That is what makes the scrollbar honest and lets you scroll
+// anywhere without waiting for anything to appear: laying out plain paragraphs is
+// cheap, and the browser only paints the ones on screen.
+//
+// What is NOT cheap is a span per word — a full book would be hundreds of
+// thousands of elements. So only the handful of paragraphs around the reading
+// position are "hydrated" into word spans, which is all the highlight, the tint
+// and the tap target ever need. Splitting a paragraph into spans doesn't change
+// its text or its line breaks, so hydrating one doesn't change its height and
+// nothing below it moves.
 function paraOf(i) {
   let lo = 0, hi = paras.length - 1;
   while (lo < hi) {
@@ -363,56 +376,80 @@ function paraOf(i) {
   return lo;
 }
 
-function mountWindow(centerPara, keepAnchor) {
-  const from = Math.max(0, centerPara - Math.floor(WINDOW / 2));
-  const to = Math.min(paras.length, from + WINDOW);
-  if (keepAnchor && from === winFrom && to === winTo) return;
+const plainText = words => (words[0] === '##' ? words.slice(1) : words).join(' ');
 
-  // Remember where the current word sits on screen, so re-mounting doesn't jump.
-  const before = keepAnchor ? (wordEl(idx)?.getBoundingClientRect().top ?? null) : null;
-
+function mountAll() {
   const frag = document.createDocumentFragment();
-  for (let pi = from; pi < to; pi++) {
-    const words = paras[pi];
-    const isHead = words[0] === '##';
-    const el = document.createElement(isHead ? 'h2' : 'p');
+  paraEls = new Array(paras.length);
+  hydrated.clear();
+  onEls = []; sentEls = [];
+  for (let pi = 0; pi < paras.length; pi++) {
+    const el = document.createElement(paras[pi][0] === '##' ? 'h2' : 'p');
     el.dataset.p = pi;
-    const base = starts[pi];
-    words.forEach((w, wi) => {
-      if (isHead && wi === 0) return;              // drop the "##" marker itself
-      const s = document.createElement('span');
-      s.className = 'w';
-      s.textContent = w;
-      s.dataset.i = base + wi;
-      el.append(s);
-      if (wi < words.length - 1) {
-        // The gaps between words are elements too, so the sentence tint reads as
-        // one continuous band instead of a row of stripes.
-        const gap = document.createElement('span');
-        gap.className = 'sp';
-        gap.textContent = ' ';
-        el.append(gap);
-      }
-    });
+    el.textContent = plainText(paras[pi]);
+    paraEls[pi] = el;
     frag.append(el);
   }
   textEl.replaceChildren(frag);
-  winFrom = from; winTo = to;
-
-  if (before !== null) {
-    const after = wordEl(idx)?.getBoundingClientRect().top;
-    if (after != null) pane.scrollTop += (after - before);
-  }
-  // The window was rebuilt, so the marks went with it.
-  if (book) { paintChunk(); paintTint(); }
 }
 
-const wordEl = i => textEl.querySelector(`.w[data-i="${i}"]`);
-
-function clearMarks(cls) {
-  for (const el of textEl.querySelectorAll('.' + cls)) el.classList.remove(cls);
+function unmountAll() {
+  textEl.replaceChildren();
+  paraEls = []; hydrated.clear();
+  onEls = []; sentEls = [];
 }
-const clearTint = () => clearMarks('sent');
+
+function hydrate(pi) {
+  const el = paraEls[pi];
+  if (!el || hydrated.has(pi)) return;
+  const words = paras[pi], base = starts[pi], isHead = words[0] === '##';
+  const frag = document.createDocumentFragment();
+  words.forEach((w, wi) => {
+    if (isHead && wi === 0) return;              // drop the "##" marker itself
+    const sp = document.createElement('span');
+    sp.className = 'w';
+    sp.textContent = w;
+    sp.dataset.i = base + wi;
+    frag.append(sp);
+    if (wi < words.length - 1) {
+      // The gaps between words are elements too, so the sentence tint reads as
+      // one continuous band instead of a row of stripes.
+      const gap = document.createElement('span');
+      gap.className = 'sp';
+      gap.textContent = ' ';
+      frag.append(gap);
+    }
+  });
+  el.replaceChildren(frag);
+  hydrated.add(pi);
+}
+
+function dehydrate(pi) {
+  if (!hydrated.has(pi)) return;
+  paraEls[pi].textContent = plainText(paras[pi]);
+  hydrated.delete(pi);
+}
+
+// Keep a band hydrated around the reading position, and drop it with a
+// paragraph of slack either side, so stepping back and forth over a boundary
+// doesn't rebuild the same paragraph over and over.
+function syncHydration(pi) {
+  const lo = Math.max(0, pi - HYDRATE), hi = Math.min(paras.length - 1, pi + HYDRATE);
+  for (const p of [...hydrated]) if (p < lo - 1 || p > hi + 1) dehydrate(p);
+  for (let p = lo; p <= hi; p++) hydrate(p);
+}
+
+function wordEl(g) {
+  const pi = paraOf(g);
+  if (!hydrated.has(pi)) return null;
+  return paraEls[pi].querySelector(`.w[data-i="${g}"]`);
+}
+
+// Marks are remembered rather than searched for. With the whole book mounted, a
+// querySelectorAll over the document on every step would scan thousands of
+// paragraphs to clear two spans.
+function clearOn() { for (const el of onEls) el.classList.remove('on'); onEls = []; }
+function clearTint() { for (const el of sentEls) el.classList.remove('sent'); sentEls = []; }
 
 // The chunk is idx .. idx+chunk-1, clipped to the sentence so a chunk never
 // straddles a full stop — stepping over "...end. Next..." in one go reads badly.
@@ -426,8 +463,11 @@ function chunkEnd() {
 }
 
 function paintChunk() {
-  clearMarks('on');
-  for (let i = idx; i <= chunkEnd(); i++) wordEl(i)?.classList.add('on');
+  clearOn();
+  for (let i = idx; i <= chunkEnd(); i++) {
+    const el = wordEl(i);
+    if (el) { el.classList.add('on'); onEls.push(el); }
+  }
 }
 
 function paintTint() {
@@ -438,33 +478,43 @@ function paintTint() {
   for (let i = r[0]; i <= r[1]; i++) {
     const el = wordEl(i);
     if (!el) continue;
-    el.classList.add('sent');
+    el.classList.add('sent'); sentEls.push(el);
     const gap = el.nextElementSibling;              // carry the tint across the space
-    if (i < r[1] && gap?.classList.contains('sp')) gap.classList.add('sent');
+    if (i < r[1] && gap?.classList.contains('sp')) { gap.classList.add('sent'); sentEls.push(gap); }
   }
 }
 
 let lastLineTop = -1;
+
+// Where a word sits in the scroll content. offsetTop can't be used for this: the
+// pane isn't positioned, so a word's offsetParent is the body and the value comes
+// back with the header's height folded into it. Adding scrollTop to the viewport
+// rectangle gives a content coordinate that is also stable mid-animation, which
+// offsetTop's raw viewport cousins are not.
+const contentTop = el => pane.scrollTop + el.getBoundingClientRect().top;
+
 function show(i, smooth = true) {
-  clearMarks('on');
+  clearOn();
   idx = i;
 
-  const pi = paraOf(idx);
-  if (pi < winFrom + EDGE || pi >= winTo - EDGE) mountWindow(pi, true);
+  syncHydration(paraOf(idx));
 
   const el = wordEl(idx);
-  if (!el) return;
+  if (!el) { updateProgress(); return; }
   paintChunk();
 
   const sid = sentOf ? sentOf[idx] : -1;
   if (SETTINGS.tint && sid !== shownSent) { shownSent = sid; paintTint(); }
 
-  if (SETTINGS.centre && el.offsetTop !== lastLineTop) {   // only scroll on a line change
-    lastLineTop = el.offsetTop;
-    pane.scrollTo({
-      top: el.offsetTop - pane.clientHeight * 0.45,
-      behavior: smooth && !reduceMotion ? 'smooth' : 'auto'
-    });
+  if (SETTINGS.centre) {
+    const top = Math.round(contentTop(el));
+    if (top !== lastLineTop) {                             // only scroll on a line change
+      lastLineTop = top;
+      pane.scrollTo({
+        top: top - pane.getBoundingClientRect().top - pane.clientHeight * 0.45,
+        behavior: smooth && !reduceMotion ? 'smooth' : 'auto'
+      });
+    }
   }
   updateProgress();
 }
@@ -640,12 +690,32 @@ function jump(dir) {
 }
 
 textEl.addEventListener('click', e => {
+  const p = e.target.closest('[data-p]');
+  if (!p) return;
   const w = e.target.closest('.w');
-  if (!w) return;
+  const target = w ? +w.dataset.i : wordIndexAt(+p.dataset.p, e.clientX, e.clientY);
+  if (target == null) return;
   clearTimeout(timer);
-  show(+w.dataset.i);
+  show(target);
   if (playing) schedule(); else saveNow();
 });
+
+// A paragraph outside the hydrated band is plain text, so there is no span under
+// the finger. Split it, then take the word whose box the tap landed in — or the
+// nearest one on that line, for a tap in the ragged right margin.
+function wordIndexAt(pi, x, y) {
+  hydrate(pi);
+  let best = null, bestD = Infinity;
+  for (const sp of paraEls[pi].querySelectorAll('.w')) {
+    const r = sp.getBoundingClientRect();
+    const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+    const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+    if (!dx && !dy) return +sp.dataset.i;
+    const d = dy * 4096 + dx;                    // same line first, then nearest
+    if (d < bestD) { bestD = d; best = +sp.dataset.i; }
+  }
+  return best;
+}
 
 // ---------------------------------------------------------------------------
 // Settings sheet
@@ -688,8 +758,8 @@ bind('optSmart', 'smart', bool);
 bind('optSentPause', 'sentPause', bool);
 bind('optTint', 'tint', bool, () => { shownSent = -1; if (book) show(idx, false); });
 bind('optScroll', 'centre', bool);
-bind('optSize', 'size', num, () => { $('optSizeOut').textContent = SETTINGS.size + '%'; });
-bind('optFont', 'font', str);
+bind('optSize', 'size', num, () => { $('optSizeOut').textContent = SETTINGS.size + '%'; if (book) show(idx, false); });
+bind('optFont', 'font', str, () => { if (book) show(idx, false); });
 bind('optTheme', 'theme', str);
 
 function syncSheet() {
