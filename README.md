@@ -46,6 +46,7 @@ on the device you are reading on.
 It accepts:
 
 - **EPUB** — converted to reading text when you add it
+- **PDF** — converted to reading text when you add it
 - **Plain text** (`.txt`) — used as-is
 
 Tap **Add a book**, then pick a file from your device's storage. You only pick a
@@ -73,6 +74,14 @@ open the app. If you remove it, the **Guide** button brings it back.
 Tap a book to open it. **Start** begins the pacer; the arrows either side step
 back and forward by a sentence. The slider sets words per minute. Tap any word to
 jump there.
+
+Two gestures do the same jobs without making you look away from the text.
+**Double-tap** anywhere on the page starts and pauses the pacer, and leaves your
+place where it is. **Drag sideways** anywhere on the page changes the speed —
+right for faster — one step of the slider per 30 pixels, measured from where your
+finger went down, so you can overshoot and come back without lifting. A single tap
+is held for a quarter of a second before it moves your place, since it might turn
+out to be the first half of a double-tap.
 
 The **gear** button opens the reading settings:
 
@@ -115,6 +124,34 @@ real one, so `produc-tion` is mended while `mind-body` is left alone.
 
 Results vary by publisher. EPUBs differ enormously in how they are built, and a
 badly assembled one can defeat any parser.
+
+## About PDF conversion
+
+A PDF is not a document either. It is a set of instructions for placing glyphs at
+coordinates on a page, with no notion of a word, a line or a paragraph. Everything
+above those glyphs has to be inferred.
+
+SpeedReader reads a PDF with [pdf.js](https://mozilla.github.io/pdf.js/), which
+hands back every run of text with its position and size, and works from there:
+runs are grouped into printed lines by their baselines; hyphens left at the end of
+a line are repaired, including across a page break; running heads and page
+numbers are detected by their repetition in the same place page after page, and
+dropped; a new paragraph is started on a first-line indent, a wide vertical gap,
+or — in justified text only, where the signal means something — a short last line;
+and larger type becomes a heading. Two-column pages are found by looking for a
+vertical gutter that no text crosses, and each column is read in turn.
+
+Two things are worth knowing. A scanned PDF is photographs of pages with no text
+in them at all, and no amount of parsing will help; it needs OCR first, which
+Calibre and Acrobat can both do. And a PDF whose paragraphs are neither indented,
+nor justified, nor separated by space has no recoverable paragraph structure —
+nothing can find breaks that were never marked — so it arrives as one long
+paragraph. It paces perfectly well, but loses the pause at each paragraph end.
+
+pdf.js is much larger than the whole of the rest of this app, so it is fetched
+only the first time you open a PDF. That first PDF therefore needs you to be
+online; afterwards it is cached along with everything else and PDFs work offline
+like the rest.
 
 ## Privacy
 
@@ -188,8 +225,9 @@ each book are still there.
 
 ## Known limitations
 
-- No PDF support yet. Convert to EPUB or plain text first — Calibre does this
-  well.
+- Scanned PDFs cannot be read — they contain no text. Run them through OCR
+  first; Calibre and Acrobat both do this.
+- The first PDF you open needs an internet connection, to fetch the PDF reader.
 - No text-to-speech. The Windows version has it; the web version does not.
 - DRM-protected books cannot be opened.
 - Very large books take a few seconds to convert when first added.
@@ -210,13 +248,19 @@ There is no build step and no dependencies. The whole app is these files:
 | `index.html` | Markup and styling |
 | `app.js` | Library, storage, pacer, settings |
 | `epub.js` | ZIP reader and EPUB-to-text conversion |
+| `pdftext.js` | PDF-to-text conversion |
 | `sw.js` | Service worker; offline support |
 | `guide.txt` | The built-in guide |
 | `manifest.json` | Makes it installable |
 | `fonts/` | Carlito, for the Calibri option |
+| `vendor/` | pdf.js, loaded on demand for PDFs |
 
-ZIP inflation uses the browser's built-in `DecompressionStream`, so there is no
-third-party library to load and nothing to keep updated.
+ZIP inflation uses the browser's built-in `DecompressionStream`, so EPUB and
+plain text need nothing beyond the browser. pdf.js in `vendor/` is the single
+third-party dependency, and it is imported dynamically — a reader who never opens
+a PDF never downloads it. To update it, replace the two `.mjs` files with a newer
+pair from [pdfjs-dist](https://www.npmjs.com/package/pdfjs-dist); they are the
+`legacy/build` variant, which is the more forgiving one about browser age.
 
 If you change a file, bump `CACHE` in `sw.js` so browsers pick up the new version
 rather than serving the old one from cache.
@@ -227,10 +271,15 @@ rather than serving the old one from cache.
 used under the SIL Open Font Licence 1.1. The licence text is included in
 `fonts/Carlito-OFL.txt`.
 
+[pdf.js](https://github.com/mozilla/pdf.js) by Mozilla and contributors, used
+under the Apache Licence 2.0. The licence text is included in
+`vendor/pdf.js-LICENSE.txt`.
+
 ## Related
 
 The desktop version, [SpeedReader for
 Windows](https://github.com/kunkel321/SpeedReader), is written in AutoHotkey v2.
 It has more settings and can read aloud. Its companion TextExtractor handles PDF
 and EPUB conversion on Windows, and shares its sidebar-separation and hyphen
-logic with the web version.
+logic with the web version — though on Windows the PDF work is delegated to
+Poppler's `pdftotext.exe`, which has no equivalent in a browser.

@@ -252,7 +252,7 @@ function reflowableChapter(doc, side) {
 // Page frames routinely cut a sentence in two. Same test TextExtractor applies to
 // hard-wrapped lines, one level up: if a block doesn't end a sentence and the next
 // starts lowercase, they're one paragraph split by the page break.
-function stitch(blocks) {
+export function stitch(blocks) {
   const out = [];
   for (let b of blocks) {
     b = b.trim();

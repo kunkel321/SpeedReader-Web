@@ -3,7 +3,7 @@ import { epubToText, txtToText } from './epub.js';
 // Stamped independently of index.html. The two files are cached separately and
 // can end up out of step — a new page against a stale script looks like a feature
 // that silently does nothing, which is very hard to diagnose from the outside.
-const APP_VERSION = '2026-09-14b';
+const APP_VERSION = '2026-09-15a';
 
 // ===========================================================================
 // Storage
@@ -148,7 +148,7 @@ async function renderShelf() {
   shelf.innerHTML = '';
   if (!books.length) {
     shelf.innerHTML = `<p class="empty">No books yet. Tap <strong>Add a book</strong> and pick an
-      <code>.epub</code> or <code>.txt</code> file from anywhere on the tablet — books are copied
+      <code>.epub</code>, <code>.pdf</code> or <code>.txt</code> file from anywhere on the tablet — books are copied
       into the app, so you only pick each one once. Or tap <strong>Guide</strong> for a short book
       about how to use this one.</p>`;
     return;
@@ -203,7 +203,7 @@ fileIn.addEventListener('change', async () => {
   busyMsg.textContent = 'Reading ' + f.name + '…';
   try {
     const tidy = t => t.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    let title = tidy(f.name.replace(/\.(epub|txt)$/i, ''));
+    let title = tidy(f.name.replace(/\.(epub|pdf|txt)$/i, ''));
     let author = '', text, note = '';
 
     if (/\.epub$/i.test(f.name)) {
@@ -214,6 +214,18 @@ fileIn.addEventListener('change', async () => {
       if (res.title) title = tidy(res.title);
       author = res.author;
       if (res.sidebarCount) note = `Moved ${res.sidebarCount} sidebar/caption blocks to the end.`;
+    } else if (/\.pdf$/i.test(f.name)) {
+      // Loaded only now: pdf.js is far larger than the whole of the rest of the
+      // app, and a reader who never opens a PDF never pays for it.
+      busyMsg.textContent = 'Loading the PDF reader…';
+      const { pdfToText } = await import('./pdftext.js');
+      const res = await pdfToText(await f.arrayBuffer(), fr => {
+        busyMsg.textContent = `Converting… ${Math.round(fr * 100)}%`;
+      });
+      text = res.text;
+      if (res.title) title = tidy(res.title);
+      author = res.author;
+      if (res.dropped) note = `Dropped ${res.dropped} running heads and page numbers.`;
     } else {
       text = txtToText(await f.text());
     }
